@@ -29,9 +29,9 @@ struct Color {
 
 typedef std::vector<std::vector<Color>> image;
 
-void writeImage(image const &img, std::ofstream& o, float dimension)
+void writeImage(image const &img, std::ofstream& o, float dimension, std::string filename = "mandelbrot.ppm")
 {
-	o.open("sarahisaac_THREADmandelbrot.ppm");
+	o.open(filename);
 	o << "P3" << std::endl;
 	o << dimension << " " << dimension << std::endl;
 	o << 255 << std::endl;
@@ -68,8 +68,47 @@ int doMandelbrot(float x_a, float y_a)
 	return i;
 }
 
+image loopMandelBrotByRow()
+{
+	float dim = 512; //always going to be a square
+	float minR = -2;
+	float maxR = 1;
+	float minI = -1;
+	float maxI = 1;
 
-image loopMandelBrotOpenMP()
+	std::vector<std::vector<Color>> img(512, std::vector<Color>(512));
+	int iteration;
+	int a;
+	for (a = 0; a < dim; a++)
+	{
+		float x = ((a / dim) * (maxR - minR)) + minR;
+		int b;
+#pragma omp parallel for schedule(static)
+		for (b = 0; b < (int)dim; b++)
+		{
+			float y = ((b / dim) * (maxI - minI)) + minI;
+			int iteration = doMandelbrot(x, y);
+			Color color = determineColor(iteration);
+			img[a][b] = color;
+		}
+	}
+	return img;
+}
+
+std::vector<Color> MandelBrotRow(float dim, float x, float maxI, float minI)
+{
+	std::vector<Color> row(512);
+	for (float b = 0; b < dim; b++)
+	{
+		float y = ((b / dim) * (maxI - minI)) + minI;
+		int iteration = doMandelbrot(x, y);
+		Color color = determineColor(iteration);
+		row[b] = color;
+	}
+	return row;
+}
+
+image loopMandelBrotByPixel()
 {
 	float dim = 512; //always going to be a square
 	float minR = -2;
@@ -84,13 +123,7 @@ image loopMandelBrotOpenMP()
 	for (a = 0; a < (int)dim; a++)
 	{
 		float x = ((a / dim) * (maxR - minR)) + minR;
-		for (float b = 0; b < dim; b++)
-		{
-			float y = ((b / dim) * (maxI - minI)) + minI;
-			int iteration = doMandelbrot(x, y);
-			Color color = determineColor(iteration);
-			img[a][b] = color;
-		}
+		img[a] = MandelBrotRow(dim, x, maxI, minI);
 	}
 	return img;
 }
@@ -123,21 +156,41 @@ int main()
 {
 	double dimension = 512; //always just make a square
 
-	image img = loopMandelBrotOpenMP();
+	image img = loopMandelBrotByPixel();
 	std::ofstream os;
-	writeImage(*&img, os, dimension);
+	std::string filename = "mandelbrot_by_pixel.ppm";
+	writeImage(*&img, os, dimension, filename);
+
+	image img2 = loopMandelBrotByRow();
+	std::ofstream os2;
+	std::string filename2 = "mandelbrot_by_row.ppm";
+	writeImage(*&img2, os2, dimension, filename2);
 
 	std::vector<double> times;
 	for (int i = 0; i < 30; i++)
 	{
-		double time = functionTimer([]() -> void {loopMandelBrotOpenMP(); });
+		double time = functionTimer([]() -> void {loopMandelBrotByRow(); });
 		times.push_back(time);
 	}
 
 	double average = getAverage(times);
 	double std_dev = getStdDev(average, times);
+	std::cout << "Thread Strategy by ROW" << std::endl;
 	std::cout << "Average time (in milliseconds): " << average << std::endl;
 	std::cout << "Standard Deviation: " << std_dev << std::endl;
+
+	std::vector<double> times_2;
+	for (int i = 0; i < 30; i++)
+	{
+		double time = functionTimer([]() -> void {loopMandelBrotByPixel(); });
+		times_2.push_back(time);
+	}
+
+	double average2 = getAverage(times_2);
+	double std_dev2 = getStdDev(average, times_2);
+	std::cout << "Thread Strategy by PIXEL" << std::endl;
+	std::cout << "Average time (in milliseconds): " << average2 << std::endl;
+	std::cout << "Standard Deviation: " << std_dev2 << std::endl;
 
 	return 0;
 }
