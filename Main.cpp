@@ -101,7 +101,6 @@ double getAverage(std::vector<double> times)
 	double total = 0;
 	for (int i = 0; i < times.size(); i++)
 	{
-		std::cout << times[i] << std::endl;
 		total += times[i];
 	}
 	double average = total / size;
@@ -122,7 +121,6 @@ double getStdDev(double average, std::vector<double> times)
 
 int main()
 {
-	std::cout << "Threaded" << std::endl;
 	double dimension = 512; //always just make a square
 
 	image img = loopMandelBrotOpenMP();
