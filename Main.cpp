@@ -12,6 +12,13 @@ struct Color {
 	int green;
 	int blue;
 
+	Color()
+	{
+		red = 0;
+		green = 0;
+		blue = 0;
+	}
+
 	Color(int r, int g, int b)
 	{
 		red = r;
@@ -24,7 +31,7 @@ typedef std::vector<std::vector<Color>> image;
 
 void writeImage(image const &img, std::ofstream& o, float dimension)
 {
-	o.open("sarahisaac_mandelbrot.ppm");
+	o.open("sarahisaac_THREADmandelbrot.ppm");
 	o << "P3" << std::endl;
 	o << dimension << " " << dimension << std::endl;
 	o << 255 << std::endl;
@@ -61,7 +68,8 @@ int doMandelbrot(float x_a, float y_a)
 	return i;
 }
 
-image loopMandelBrot()
+
+image loopMandelBrotOpenMP()
 {
 	float dim = 512; //always going to be a square
 	float minR = -2;
@@ -69,25 +77,20 @@ image loopMandelBrot()
 	float minI = -1;
 	float maxI = 1;
 
-	image img;
-	std::vector<Color> tempVec;
+	std::vector<std::vector<Color>> img(512, std::vector<Color>(512));
 	int iteration;
-	float x;
-	float y;
-
-	for (float a = 0; a < dim; a++)
+	int a;
+#pragma omp parallel for schedule(static)
+	for (a = 0; a < (int)dim; a++)
 	{
-		std::vector<Color> tempVec;
-		x = ((a / dim) * (maxR - minR)) + minR;
-#pragma omp parallel for
+		float x = ((a / dim) * (maxR - minR)) + minR;
 		for (float b = 0; b < dim; b++)
 		{
-			y = ((b / dim) * (maxI - minI)) + minI;
-			iteration = doMandelbrot(x, y);
+			float y = ((b / dim) * (maxI - minI)) + minI;
+			int iteration = doMandelbrot(x, y);
 			Color color = determineColor(iteration);
-			tempVec.push_back(color);
+			img[a][b] = color;
 		}
-		img.push_back(tempVec);
 	}
 	return img;
 }
@@ -98,6 +101,7 @@ double getAverage(std::vector<double> times)
 	double total = 0;
 	for (int i = 0; i < times.size(); i++)
 	{
+		std::cout << times[i] << std::endl;
 		total += times[i];
 	}
 	double average = total / size;
@@ -118,16 +122,17 @@ double getStdDev(double average, std::vector<double> times)
 
 int main()
 {
+	std::cout << "Threaded" << std::endl;
 	double dimension = 512; //always just make a square
 
-	image img = loopMandelBrot();
+	image img = loopMandelBrotOpenMP();
 	std::ofstream os;
 	writeImage(*&img, os, dimension);
 
 	std::vector<double> times;
-	for (int i = 0; i < 15; i++)
+	for (int i = 0; i < 30; i++)
 	{
-		double time = functionTimer([]() -> void {loopMandelBrot(); });
+		double time = functionTimer([]() -> void {loopMandelBrotOpenMP(); });
 		times.push_back(time);
 	}
 
