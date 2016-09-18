@@ -68,7 +68,7 @@ int doMandelbrot(float x_a, float y_a)
 	return i;
 }
 
-image loopMandelBrotByRow()
+image loopMandelBrotByPixel()
 {
 	float dim = 512; //always going to be a square
 	float minR = -2;
@@ -108,7 +108,7 @@ std::vector<Color> MandelBrotRow(float dim, float x, float maxI, float minI)
 	return row;
 }
 
-image loopMandelBrotByPixel()
+image loopMandelBrotByRow()
 {
 	float dim = 512; //always going to be a square
 	float minR = -2;
