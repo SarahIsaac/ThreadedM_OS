@@ -134,7 +134,6 @@ double getAverage(std::vector<double> times)
 	double total = 0;
 	for (int i = 0; i < times.size(); i++)
 	{
-		std::cout << times[i] << std::endl;
 		total += times[i];
 	}
 	double average = total / size;
